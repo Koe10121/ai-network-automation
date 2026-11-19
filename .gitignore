@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+.env
+configs/devices.yaml
+uploads/
+
+*.db
+*.log
+jobs.json
+backups/
+worker/known_hosts
+
+# local-only files
+frontend/index.backup-original-ui.html
+.env.local
+*.bak

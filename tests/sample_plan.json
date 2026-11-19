@@ -1,0 +1,27 @@
+{
+  "devices": [
+    {"name": "PC1", "type": "PC"},
+    {"name": "R1", "type": "router"},
+    {"name": "R2", "type": "router"},
+    {"name": "PC2", "type": "PC"}
+  ],
+  "links": [
+    {"from": "PC1", "to": "R1"},
+    {"from": "R1", "to": "R2"},
+    {"from": "R2", "to": "PC2"}
+  ],
+  "networks": ["10.0.0.0/24", "10.1.0.0/24", "10.2.0.0/24"],
+  "addresses": [
+    {"device": "PC1", "ip": "10.0.0.10", "network": "10.0.0.0/24"},
+    {"device": "R1", "ip": "10.0.0.1", "network": "10.0.0.0/24"},
+    {"device": "R1", "ip": "10.1.0.1", "network": "10.1.0.0/24"},
+    {"device": "R2", "ip": "10.1.0.2", "network": "10.1.0.0/24"},
+    {"device": "R2", "ip": "10.2.0.2", "network": "10.2.0.0/24"},
+    {"device": "PC2", "ip": "10.2.0.10", "network": "10.2.0.0/24"}
+  ],
+  "routing": [],
+  "ambiguities": [
+    "Interface names are not shown in the diagram.",
+    "Gateways, router IDs and routing protocol details are not shown."
+  ]
+}

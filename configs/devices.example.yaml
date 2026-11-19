@@ -1,0 +1,25 @@
+# Copy to configs/devices.yaml (git-ignored) and fill in the placeholders.
+# Things a diagram cannot show: real interface names, router IDs, management access.
+# Addresses and links come from the AI analysis of the uploaded diagram, not from this file.
+# Interface names must be the ones GNS3 actually shows (run `show ip interface brief`).
+# No passwords here: SSH credentials come from .env or an SSH key.
+
+ospf:
+  process_id: 1
+  area: 0
+
+routers:
+  R1:
+    router_id: 1.1.1.1
+    management_host: "<R1 management IP from instructor>"
+    ssh_port: 22
+    interfaces:            # neighbor -> real interface name facing that neighbor
+      PC1: "<R1 interface facing PC1>"
+      R2: "<R1 interface facing R2>"
+  R2:
+    router_id: 2.2.2.2
+    management_host: "<R2 management IP from instructor>"
+    ssh_port: 22
+    interfaces:
+      R1: "<R2 interface facing R1>"
+      PC2: "<R2 interface facing PC2>"

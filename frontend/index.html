@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetAuto Console</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --panel: #ffffff; --panel2: #f0f3f9; --line: #e1e6f0;
+    --text: #172033; --muted: #66728a; --accent: #4f6bff; --accent-soft: #e8ecff;
+    --ok: #12a150; --ok-soft: #e0f6e9; --warn: #c27803; --warn-soft: #fdf1d8;
+    --bad: #d92d3f; --bad-soft: #fde4e7; --run: #2f7bff; --run-soft: #e2edff;
+    --code-bg: #0f1627; --code-text: #d6e2ff; --shadow: 0 1px 2px rgba(20,30,60,.06), 0 8px 24px rgba(20,30,60,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1020; --panel: #121a30; --panel2: #18223d; --line: #26314f;
+      --text: #e6ebf8; --muted: #8e9bb8; --accent: #7b8fff; --accent-soft: #1f2a52;
+      --ok: #3ddc84; --ok-soft: #12351f; --warn: #f2b84b; --warn-soft: #3a2d10;
+      --bad: #ff6b7a; --bad-soft: #3d1820; --run: #6aa2ff; --run-soft: #172a4d;
+      --code-bg: #080c18; --code-text: #cfdcff; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1020; --panel: #121a30; --panel2: #18223d; --line: #26314f;
+    --text: #e6ebf8; --muted: #8e9bb8; --accent: #7b8fff; --accent-soft: #1f2a52;
+    --ok: #3ddc84; --ok-soft: #12351f; --warn: #f2b84b; --warn-soft: #3a2d10;
+    --bad: #ff6b7a; --bad-soft: #3d1820; --run: #6aa2ff; --run-soft: #172a4d;
+    --code-bg: #080c18; --code-text: #cfdcff; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  code, pre, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 16px; padding: 12px 24px;
+    background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: .2px; }
+  .logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+          background: linear-gradient(135deg, var(--accent), #8a5bff); color: #fff; }
+  .brand small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; margin-top: -2px; }
+  .spacer { flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+          font-size: 12px; font-weight: 600; background: var(--panel2); color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; width: 36px; height: 36px; display: grid; place-items: center; }
+  .icon-btn:hover { background: var(--panel2); }
+
+  .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 20px 24px 40px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); padding: 16px; } .topbar { padding: 12px 16px; } }
+  .layout > *, .stack, .card, .tabbar { min-width: 0; }
+  .topo { min-width: 560px; }
+  .card-body:has(> svg.topo) { overflow-x: auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+  .card h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 0; }
+  .card-body { padding: 14px 18px 18px; }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+
+  .drop { display: block; width: 100%; min-height: 130px; border: 2px dashed var(--line); border-radius: 14px; padding: 26px 14px; text-align: center; color: var(--muted);
+          background: var(--panel2); transition: .15s; cursor: pointer; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .drop svg { display: block; margin: 0 auto 8px; }
+  .drop b { color: var(--text); }
+  .preview { margin-top: 12px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #fff; display: none; cursor: zoom-in; position: relative; }
+  .preview img { display: block; width: 100%; height: auto; min-height: 120px; object-fit: contain; image-rendering: auto; }
+  .preview .zoomhint { position: absolute; right: 8px; bottom: 8px; background: rgba(15,22,39,.75); color: #fff; font-size: 11px; padding: 3px 9px; border-radius: 999px; }
+  .lightbox { position: fixed; inset: 0; background: rgba(5,10,25,.82); display: none; place-items: center; z-index: 50; padding: 24px; cursor: zoom-out; }
+  .lightbox.show { display: grid; }
+  .lightbox img { max-width: 96vw; max-height: 92vh; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5); image-rendering: auto; }
+  .fname { margin-top: 8px; font-size: 12px; color: var(--muted); word-break: break-all; }
+
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step-btn {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 11px 12px;
+    border: 1px solid var(--line); background: var(--panel); border-radius: 12px; transition: .15s;
+  }
+  .step-btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  .step-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .step-btn .num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+                   background: var(--panel2); color: var(--muted); flex: none; }
+  .step-btn .t b { display: block; font-size: 14px; }
+  .step-btn .t span { font-size: 12px; color: var(--muted); }
+  .step-btn.active { border-color: var(--accent); background: var(--accent-soft); }
+  .step-btn.active .num { background: var(--accent); color: #fff; }
+  .step-btn.done .num { background: var(--ok); color: #fff; }
+
+  .jobs { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow: auto; }
+  .job-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px;
+             border: 1px solid transparent; background: var(--panel2); text-align: left; }
+  .job-row:hover { border-color: var(--accent); }
+  .job-row.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .job-row .id { font-weight: 600; }
+  .job-row .when { font-size: 11px; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; }
+  .badge.PENDING, .badge.GENERATED, .badge.QUEUED, .badge.NOT_STARTED { background: var(--panel2); color: var(--muted); }
+  .badge.RUNNING, .badge.VERIFYING { background: var(--run-soft); color: var(--run); }
+  .badge.RUNNING .dot, .badge.VERIFYING .dot, .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  .badge.SUCCESS, .badge.PASSED, .badge.APPROVED { background: var(--ok-soft); color: var(--ok); }
+  .badge.FAILED, .badge.INVALID { background: var(--bad-soft); color: var(--bad); }
+  .badge.SKIPPED { background: var(--warn-soft); color: var(--warn); }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+
+  .hero { padding: 20px 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .hero h2 { margin: 0; font-size: 20px; }
+  .hero p { margin: 2px 0 0; color: var(--muted); }
+  .hero .grow { flex: 1; min-width: 220px; }
+  .progress { display: flex; align-items: center; gap: 0; width: 100%; margin-top: 8px; }
+  .pstep { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); position: relative; text-align: center; }
+  .pstep::before { content: ""; position: absolute; top: 10px; left: -50%; width: 100%; height: 3px; background: var(--line); z-index: 0; }
+  .pstep:first-child::before { display: none; }
+  .pstep .c { width: 22px; height: 22px; border-radius: 50%; background: var(--panel2); border: 2px solid var(--line); z-index: 1; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .pstep.done { color: var(--text); }
+  .pstep.done::before { background: var(--ok); }
+  .pstep.done .c { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .pstep.now .c { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .pstep.bad .c { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .pstep.bad::before { background: var(--line); }
+
+  .tabs { display: flex; gap: 4px; padding: 6px; background: var(--panel2); border-radius: 12px; width: fit-content; max-width: 100%; overflow: auto; }
+  .tab { border: 0; background: transparent; padding: 7px 14px; border-radius: 9px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .tab.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .tabbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .alert { border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  .alert.bad { background: var(--bad-soft); color: var(--bad); }
+  .alert.warn { background: var(--warn-soft); color: var(--warn); }
+  .alert.ok { background: var(--ok-soft); color: var(--ok); }
+  .alert b { display: block; margin-bottom: 4px; }
+  .alert ul { margin: 0; padding-left: 18px; }
+  .topo { width: 100%; background: var(--panel2); border-radius: 14px; border: 1px solid var(--line); }
+  .topo text { fill: var(--text); font-family: inherit; }
+  .topo .sub { fill: var(--muted); font-size: 11px; }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .tbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+
+  .code-wrap { position: relative; }
+  pre.code { margin: 0; background: var(--code-bg); color: var(--code-text); padding: 16px; border-radius: 12px; overflow: auto; max-height: 520px; font-size: 12.5px; line-height: 1.6; white-space: pre; }
+  .copy { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 8px; border: 1px solid #ffffff33; background: #ffffff14; color: #dbe5ff; font-size: 12px; }
+  .copy:hover { background: #ffffff2b; }
+  .subtabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 14px; font-weight: 600; color: var(--muted); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .router-card { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--panel); }
+  .router-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .router-head h4 { margin: 0; font-size: 16px; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 12.5px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; word-break: break-word; }
+  .checks { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .checks li { display: flex; gap: 8px; font-size: 12.5px; padding: 6px 8px; border-radius: 8px; background: var(--panel2); }
+  .checks .ico { font-weight: 800; flex: none; }
+  .checks .y { color: var(--ok); } .checks .n { color: var(--bad); }
+  details { margin-top: 10px; } summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  details pre.code { margin-top: 8px; max-height: 260px; }
+
+  .btn { border: 1px solid var(--line); background: var(--panel); padding: 8px 14px; border-radius: 10px; font-weight: 600; }
+  .btn:hover { background: var(--panel2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .empty-state h2 { color: var(--text); margin: 8px 0 4px; }
+
+  .toasts { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 30; }
+  .toast { background: var(--text); color: var(--bg); padding: 11px 16px; border-radius: 12px; box-shadow: var(--shadow); max-width: 380px; font-weight: 500; animation: pop .2s ease-out; }
+  .toast.bad { background: var(--bad); color: #fff; }
+  @keyframes pop { from { transform: translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(5,10,25,.55); display: none; place-items: center; z-index: 40; padding: 16px; }
+  .modal-bg.show { display: grid; }
+  .modal { background: var(--panel); border-radius: 18px; padding: 22px; max-width: 440px; width: 100%; box-shadow: var(--shadow); border: 1px solid var(--line); }
+  .modal h3 { margin: 0 0 6px; font-size: 18px; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .modal p { margin: 0 0 18px; color: var(--muted); }
+  .modal .row { display: flex; justify-content: flex-end; gap: 10px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  /* ===== THEME 3: "Pop Brutal" — thick outlines, hard shadows, orange + yellow. Delete this block to get the original look back. ===== */
+  :root {
+    --ink: #111111;
+    --bg: #f1eeff; --panel: #ffffff; --panel2: #f6f4ff; --line: #111111;
+    --text: #111111; --muted: #4e4a63; --accent: #ff5a1f; --accent-soft: #ffe3d6;
+    --ok: #0b7a43; --ok-soft: #c9f4dc; --warn: #7a4a00; --warn-soft: #ffe9a8;
+    --bad: #b00020; --bad-soft: #ffd3d8; --run: #1639c9; --run-soft: #d6e0ff;
+    --code-bg: #111111; --code-text: #f4f1ff; --shadow: 5px 5px 0 var(--ink);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #f4f1ff;
+      --bg: #0e0d14; --panel: #181722; --panel2: #1f1e2b; --line: #f4f1ff;
+      --text: #f4f1ff; --muted: #a9a5c2; --accent: #ff7a45; --accent-soft: #3a1d12;
+      --ok: #6df0a6; --ok-soft: #123a26; --warn: #ffd23f; --warn-soft: #3d3208;
+      --bad: #ff8794; --bad-soft: #43141b; --run: #8fb0ff; --run-soft: #152354;
+      --code-bg: #07060b; --code-text: #f4f1ff; --shadow: 5px 5px 0 var(--ink);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #f4f1ff;
+    --bg: #0e0d14; --panel: #181722; --panel2: #1f1e2b; --line: #f4f1ff;
+    --text: #f4f1ff; --muted: #a9a5c2; --accent: #ff7a45; --accent-soft: #3a1d12;
+    --ok: #6df0a6; --ok-soft: #123a26; --warn: #ffd23f; --warn-soft: #3d3208;
+    --bad: #ff8794; --bad-soft: #43141b; --run: #8fb0ff; --run-soft: #152354;
+    --code-bg: #07060b; --code-text: #f4f1ff; --shadow: 5px 5px 0 var(--ink);
+  }
+  body {
+    background-image: radial-gradient(color-mix(in srgb, var(--ink) 16%, transparent) 1px, transparent 1px);
+    background-size: 20px 20px;
+    font-family: "Segoe UI", system-ui, sans-serif; font-weight: 500;
+  }
+  code, pre, .mono { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; }
+
+  /* top bar: solid yellow slab */
+  .topbar { background: #ffd23f; color: #111; border-bottom: 3px solid #111; padding: 14px 28px; }
+  .brand { color: #111; font-size: 19px; font-weight: 900; letter-spacing: -.01em; text-transform: uppercase; }
+  .brand small { color: #3b3200; font-weight: 700; letter-spacing: .08em; font-size: 10.5px; }
+  .logo { background: #111; color: #ffd23f; border-radius: 6px; border: 2px solid #111; box-shadow: 3px 3px 0 var(--accent); }
+  .topbar .pill { background: #fff; color: #111; border: 2px solid #111; border-radius: 6px; font-weight: 800; }
+  .icon-btn { background: #fff; color: #111; border: 2px solid #111; border-radius: 6px; box-shadow: 3px 3px 0 #111; }
+  .icon-btn:hover { background: var(--accent); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #111; }
+
+  /* cards: thick outline + hard shadow, black label tabs */
+  .card { border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--shadow); }
+  .card h3 { display: inline-block; background: var(--ink); color: var(--panel); padding: 3px 10px; border-radius: 4px; font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; letter-spacing: .1em; }
+  .layout { gap: 26px; }
+
+  /* upload */
+  .drop { border: 3px dashed var(--ink); border-radius: 10px; background: #ffd23f; color: #111; }
+  .drop b { color: #111; }
+  .drop:hover, .drop.over { background: var(--accent); border-style: solid; color: #111; }
+  .preview { border: 2px solid var(--ink); border-radius: 8px; box-shadow: 3px 3px 0 var(--ink); }
+  .preview .zoomhint { background: var(--ink); color: var(--panel); border-radius: 4px; font-weight: 800; }
+
+  /* workflow: chunky buttons */
+  .step-btn { border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); box-shadow: 3px 3px 0 var(--ink); }
+  .step-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--ink); border-color: var(--ink); background: var(--accent-soft); }
+  .step-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  .step-btn:disabled { opacity: .5; box-shadow: none; }
+  .step-btn .num { border-radius: 6px; border: 2px solid var(--ink); background: var(--panel2); color: var(--text); font-weight: 900; }
+  .step-btn.active { background: var(--accent); }
+  .step-btn.active .t span, .step-btn.active .t b { color: #111; }
+  .step-btn.active .num { background: #111; color: #ffd23f; border-color: #111; }
+  .step-btn.done .num { background: var(--ok-soft); color: var(--ok); }
+  .step-btn .t b { font-weight: 900; }
+
+  /* jobs */
+  .job-row { border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); }
+  .job-row:hover { background: var(--accent-soft); }
+  .job-row.sel { background: #ffd23f; color: #111; }
+  .job-row.sel .when { color: #3b3200; }
+
+  /* badges: sticker look */
+  .badge { color: var(--ink) !important; border: 2px solid var(--ink); border-radius: 6px; font-weight: 900; letter-spacing: .06em; padding: 2px 9px; }
+  .badge.PENDING, .badge.GENERATED, .badge.QUEUED, .badge.NOT_STARTED { background: var(--panel2); }
+  .badge.RUNNING, .badge.VERIFYING { background: var(--run-soft); }
+  .badge.SUCCESS, .badge.PASSED, .badge.APPROVED { background: var(--ok-soft); }
+  .badge.FAILED, .badge.INVALID { background: var(--bad-soft); }
+  .badge.SKIPPED { background: var(--warn-soft); }
+
+  /* hero + progress */
+  .hero h2 { font-size: 26px; font-weight: 900; letter-spacing: -.01em; text-transform: uppercase; }
+  .pstep { font-weight: 800; font-size: 11px; color: var(--text); text-transform: uppercase; letter-spacing: .05em; }
+  .pstep::before { height: 4px; top: 9px; background: var(--ink); opacity: .25; }
+  .pstep .c { border: 2px solid var(--ink); border-radius: 6px; background: var(--panel); color: var(--text); }
+  .pstep.done::before { background: var(--ok); opacity: 1; }
+  .pstep.done .c { background: var(--ok); border-color: var(--ink); color: #fff; }
+  .pstep.now .c { background: var(--accent); color: #111; border-color: var(--ink); }
+  .pstep.bad .c { background: var(--bad); color: #fff; border-color: var(--ink); }
+
+  /* tabs: separate boxed buttons */
+  .tabs { background: transparent; padding: 0; gap: 10px; border-radius: 0; }
+  .tab { border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); color: var(--text); font-weight: 800; box-shadow: 3px 3px 0 var(--ink); }
+  .tab:hover { background: var(--accent-soft); }
+  .tab.on { background: var(--accent); color: #111; box-shadow: 1px 1px 0 var(--ink); transform: translate(2px, 2px); }
+  .chip { border: 2px solid var(--ink); border-radius: 8px; color: var(--text); font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
+  .chip.on { background: var(--accent); color: #111; border-color: var(--ink); }
+
+  /* alerts, tables, diagram, routers, code */
+  .alert { border: 2px solid var(--ink); border-radius: 8px; color: var(--text); font-weight: 600; }
+  .alert.bad { background: var(--bad-soft); } .alert.warn { background: var(--warn-soft); } .alert.ok { background: var(--ok-soft); }
+  .topo { border: 2px solid var(--ink); border-radius: 10px; background: var(--panel2); }
+  .tbl th { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; border-bottom: 2px solid var(--ink); color: var(--text); }
+  .tbl td { border-bottom: 1px dashed var(--line); }
+  .router-card { border: 2px solid var(--ink); border-radius: 10px; background: var(--panel); box-shadow: 4px 4px 0 var(--ink); }
+  .router-head h4 { font-weight: 900; font-size: 18px; text-transform: uppercase; }
+  .checks li { border: 1.5px solid var(--ink); border-radius: 6px; background: var(--panel2); }
+  pre.code { background: var(--code-bg); border: 2px solid var(--ink); border-radius: 8px; box-shadow: 3px 3px 0 var(--accent); }
+  .copy { background: #ffd23f; color: #111; border: 2px solid #111; border-radius: 6px; font-weight: 800; }
+  .copy:hover { background: var(--accent); }
+  summary { font-weight: 800; color: var(--text); }
+
+  /* buttons, modal, toasts */
+  .btn { border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); color: var(--text); font-weight: 800; box-shadow: 3px 3px 0 var(--ink); }
+  .btn:hover { background: var(--accent-soft); }
+  .btn.primary { background: var(--accent); color: #111; border-color: var(--ink); }
+  .modal { border: 3px solid var(--ink); border-radius: 12px; box-shadow: 8px 8px 0 var(--ink); }
+  .toast { background: #ffd23f; color: #111; border: 2px solid #111; border-radius: 8px; box-shadow: 4px 4px 0 #111; font-weight: 800; }
+  .toast.bad { background: var(--bad); color: #fff; }
+  .empty-state h2 { font-weight: 900; text-transform: uppercase; font-size: 26px; }
+
+  /* ===== LAYOUT 2: workflow bar across the top, upload + jobs left, results right. Delete this block for the old arrangement. ===== */
+  .layout {
+    grid-template-columns: 340px minmax(0, 1fr);
+    grid-template-areas: "flow flow" "upload main" "jobs main";
+    align-items: start; row-gap: 22px;
+  }
+  .layout > aside.stack { display: contents; }
+  .layout > aside > section:nth-child(1) { grid-area: upload; }
+  .layout > aside > section:nth-child(2) { grid-area: flow; }
+  .layout > aside > section:nth-child(3) { grid-area: jobs; }
+  .layout > #main { grid-area: main; }
+  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .step-btn { height: 100%; }
+  .jobs { max-height: 360px; }
+  @media (max-width: 1100px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "flow" "upload" "main" "jobs"; }
+  }
+  @media (max-width: 520px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.3 11l9.4-4M7.3 13l9.4 4"/></svg>
+    </div>
+    <div>NetAuto Console<small>AI-driven OSPF automation</small></div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="livePill"><span class="dot"></span><span id="liveText">Idle</span></span>
+  <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</header>
+
+<main class="layout">
+  <aside class="stack">
+    <section class="card">
+      <div class="card-head"><h3>1 · Network diagram</h3></div>
+      <div class="card-body">
+        <label class="drop" id="drop" for="fileInput">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+          <div><b>Drop a diagram</b> or click to browse</div>
+          <div style="font-size:12px">PNG or JPG</div>
+        </label>
+        <input type="file" id="fileInput" accept="image/png, image/jpeg" hidden>
+        <div class="preview" id="previewBox" title="Click to enlarge"><img id="preview" alt="Diagram preview"><span class="zoomhint">Click to enlarge</span></div>
+        <div class="fname" id="fname"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h3>2 · Workflow</h3></div>
+      <div class="card-body steps">
+        <button class="step-btn" id="generateBtn"><span class="num">1</span><span class="t"><b>Generate</b><span>AI reads the diagram, builds configs</span></span></button>
+        <button class="step-btn" id="reviewBtn"><span class="num">2</span><span class="t"><b>Review</b><span>Refresh and inspect the job</span></span></button>
+        <button class="step-btn" id="approveBtn"><span class="num">3</span><span class="t"><b>Approve</b><span>Administrator sign-off</span></span></button>
+        <button class="step-btn" id="deployBtn"><span class="num">4</span><span class="t"><b>Deploy</b><span>Kafka, worker, SSH, verify</span></span></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h3>Recent jobs</h3><button class="btn" id="refreshJobs" style="padding:3px 10px;font-size:12px">Refresh</button></div>
+      <div class="card-body"><div class="jobs" id="jobsList"><div class="empty">No jobs yet.</div></div></div>
+    </section>
+  </aside>
+
+  <section class="stack" id="main">
+    <div class="card" id="emptyCard">
+      <div class="empty-state">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.3 11l9.4-4M7.3 13l9.4 4"/></svg>
+        <h2>Ready when you are</h2>
+        <div>Upload a topology diagram, then press <b>Generate</b>. The AI never touches your routers.</div>
+      </div>
+    </div>
+    <div id="jobView" style="display:none" class="stack"></div>
+  </section>
+</main>
+
+<div class="lightbox" id="lightbox"><img id="lightImg" alt="Diagram full size"></div>
+<div class="toasts" id="toasts"></div>
+<div class="modal-bg" id="modalBg">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="mTitle"></h3><p id="mText"></p>
+    <div class="row"><button class="btn" id="mCancel">Cancel</button><button class="btn primary" id="mOk">Confirm</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtTime = iso => { if (!iso) return "-"; try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+
+  let job = null, tab = "overview", cfgDev = null, busy = false, pollTimer = null, DEVICES = {};
+
+  // ---------- helpers ----------
+  function toast(msg, bad) {
+    const t = document.createElement("div");
+    t.className = "toast" + (bad ? " bad" : "");
+    t.textContent = msg;
+    $("toasts").appendChild(t);
+    setTimeout(() => t.remove(), 4500);
+  }
+  function confirmBox(title, text, okLabel) {
+    return new Promise(res => {
+      $("mTitle").textContent = title; $("mText").textContent = text; $("mOk").textContent = okLabel || "Confirm";
+      $("modalBg").classList.add("show");
+      const done = v => { $("modalBg").classList.remove("show"); $("mOk").onclick = $("mCancel").onclick = null; res(v); };
+      $("mOk").onclick = () => done(true); $("mCancel").onclick = () => done(false);
+    });
+  }
+  async function api(url, opts) {
+    const r = await fetch(url, opts);
+    let data = null;
+    try { data = await r.json(); } catch { /* not JSON */ }
+    if (!r.ok) throw new Error((data && data.detail) || ("HTTP " + r.status));
+    return data;
+  }
+  function setLive(text, kind) {
+    $("liveText").textContent = text;
+    const p = $("livePill");
+    p.style.background = kind === "run" ? "var(--run-soft)" : kind === "ok" ? "var(--ok-soft)" : kind === "bad" ? "var(--bad-soft)" : "var(--panel2)";
+    p.style.color = kind === "run" ? "var(--run)" : kind === "ok" ? "var(--ok)" : kind === "bad" ? "var(--bad)" : "var(--muted)";
+  }
+  const badge = (s, extra) => `<span class="badge ${esc(s)}"><span class="dot"></span>${esc(extra || s)}</span>`;
+  // A job is only "SUCCESS" for the user once the end-to-end verification has finished too.
+  const shownStatus = j => (j.status === "SUCCESS" && j.verification && ["PENDING", "RUNNING"].includes(j.verification.status)) ? "VERIFYING" : j.status;
+
+  // ---------- theme ----------
+  function applyTheme(t) { if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); }
+  try { applyTheme(localStorage.getItem("theme")); } catch { /* storage blocked */ }
+  $("themeBtn").onclick = () => {
+    const cur = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch { /* storage blocked */ }
+  };
+
+  // ---------- upload ----------
+  const fileInput = $("fileInput"), drop = $("drop");
+  function showFile(file) {
+    if (!file) return;
+    $("preview").src = URL.createObjectURL(file);
+    $("previewBox").style.display = "block";
+    $("fname").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
+  }
+  $("previewBox").addEventListener("click", () => { $("lightImg").src = $("preview").src; $("lightbox").classList.add("show"); });
+  $("lightbox").addEventListener("click", () => $("lightbox").classList.remove("show"));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("lightbox").classList.remove("show"); });
+  fileInput.addEventListener("change", () => showFile(fileInput.files[0]));
+  ["dragenter", "dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", ev => {
+    const f = ev.dataTransfer.files[0];
+    if (f) { const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files; showFile(f); }
+  });
+
+  // ---------- state machine for buttons ----------
+  function updateButtons() {
+    const s = job ? job.status : null;
+    const gen = $("generateBtn"), rev = $("reviewBtn"), app = $("approveBtn"), dep = $("deployBtn");
+    [gen, rev, app, dep].forEach(b => b.classList.remove("active", "done"));
+    gen.disabled = busy;
+    rev.disabled = busy || !job;
+    app.disabled = busy || !job || job.approved || (job.errors && job.errors.length > 0);
+    dep.disabled = busy || !job || !job.approved || s !== "APPROVED";
+    if (job) {
+      gen.classList.add("done");
+      if (job.approved) app.classList.add("done");
+      if (s !== "APPROVED" && s !== "INVALID" && s !== "GENERATED") dep.classList.add("done");
+      if (s === "GENERATED") app.classList.add("active");
+      if (s === "APPROVED") dep.classList.add("active");
+    } else gen.classList.add("active");
+  }
+
+  // ---------- rendering ----------
+  function stageIndex(j) {
+    if (!j) return 0;
+    const s = j.status, v = j.verification && j.verification.status;
+    if (s === "INVALID") return 1;
+    if (s === "GENERATED") return 2;
+    if (s === "APPROVED") return 3;
+    if (s === "QUEUED") return 4;
+    if (s === "RUNNING") return 5;
+    if (s === "SUCCESS" || s === "FAILED") return v === "PASSED" || v === "FAILED" || v === "SKIPPED" ? 7 : 6;
+    return 1;
+  }
+  function progressHtml(j) {
+    const labels = ["Generate", "Validate", "Approve", "Kafka", "Deploy", "Verify"];
+    const idx = stageIndex(j);
+    const bad = j.status === "INVALID" || j.status === "FAILED" || (j.verification && j.verification.status === "FAILED");
+    // idx: number of completed stages
+    const done = { INVALID: 1, GENERATED: 2, APPROVED: 3, QUEUED: 4, RUNNING: 4, SUCCESS: 5, FAILED: 5 }[j.status] ?? 1;
+    const verified = j.verification && ["PASSED", "FAILED", "SKIPPED"].includes(j.verification.status);
+    return `<div class="progress">${labels.map((l, i) => {
+      let cls = "";
+      const complete = i < done || (i === 5 && verified && j.verification.status === "PASSED");
+      if (complete) cls = "done";
+      else if (i === done) cls = (bad ? "bad" : "now");
+      if (i === 1 && j.status === "INVALID") cls = "bad";
+      return `<div class="pstep ${cls}"><div class="c">${cls === "done" ? "✓" : cls === "bad" ? "!" : i + 1}</div>${l}</div>`;
+    }).join("")}</div>`;
+  }
+
+  function topologySvg(plan) {
+    const devs = (plan && plan.devices) || [], links = (plan && plan.links) || [], addrs = (plan && plan.addresses) || [];
+    if (!devs.length) return "<div class='empty'>No devices extracted.</div>";
+    // order devices along the links (chain), starting from an endpoint
+    const names = devs.map(d => d.name), adj = {};
+    names.forEach(n => adj[n] = []);
+    links.forEach(l => { if (adj[l.from] && adj[l.to]) { adj[l.from].push(l.to); adj[l.to].push(l.from); } });
+    const start = names.find(n => adj[n].length === 1) || names[0];
+    const order = [], seen = new Set(), queue = [start];
+    while (queue.length) { const n = queue.shift(); if (seen.has(n)) continue; seen.add(n); order.push(n); adj[n].forEach(m => queue.push(m)); }
+    names.forEach(n => { if (!seen.has(n)) order.push(n); });
+    const W = Math.max(900, order.length * 250), H = 330, gap = W / order.length, Y = 150;
+    const pos = {}; order.forEach((n, i) => pos[n] = { x: gap * i + gap / 2, y: Y });
+    const type = n => ((devs.find(d => d.name === n) || {}).type || "").toLowerCase();
+    const isR = n => type(n).includes("router");
+    const short = s => String(s || "").replace(/^FastEthernet/i, "Fa").replace(/^GigabitEthernet/i, "Gi").replace(/^Ethernet/i, "Eth");
+    const ifaceOf = (n, peer) => (((DEVICES.routers || {})[n] || {}).interfaces || {})[peer];
+    const ipFor = (n, net) => (addrs.find(a => a.device === n && a.network === net) || {}).ip;
+    const R = 34;
+    let svg = `<svg class="topo" viewBox="0 0 ${W} ${H}" role="img" aria-label="Network topology" xmlns="http://www.w3.org/2000/svg">`;
+
+    // OSPF area band around all routers
+    const rs = order.filter(isR);
+    if (rs.length >= 2) {
+      const x1 = pos[rs[0]].x - 70, x2 = pos[rs[rs.length - 1]].x + 70;
+      svg += `<rect x="${x1}" y="${Y - 92}" width="${x2 - x1}" height="${184}" rx="26" fill="var(--accent-soft)" fill-opacity=".55" stroke="var(--accent)" stroke-dasharray="7 6" stroke-width="1.6"/>`;
+      svg += `<text x="${(x1 + x2) / 2}" y="${Y - 70}" text-anchor="middle" font-size="12.5" font-weight="700" style="fill:var(--accent)">OSPFv2 · process ${esc(((DEVICES.ospf || {}).process_id) ?? 1)} · Area ${esc(((DEVICES.ospf || {}).area) ?? 0)}</text>`;
+    }
+
+    // links first (so nodes sit on top)
+    links.forEach(l => {
+      const a = pos[l.from], b = pos[l.to]; if (!a || !b) return;
+      const na = addrs.filter(x => x.device === l.from).map(x => x.network), nb = addrs.filter(x => x.device === l.to).map(x => x.network);
+      const net = na.find(n => nb.includes(n));
+      const r1 = isR(l.from) ? R : 30, r2 = isR(l.to) ? R : 30;
+      const xa = a.x + r1, xb = b.x - r2, mid = (a.x + b.x) / 2;
+      const routerLink = isR(l.from) && isR(l.to);
+      svg += `<line x1="${xa}" y1="${Y}" x2="${xb}" y2="${Y}" stroke="${routerLink ? "var(--accent)" : "var(--muted)"}" stroke-width="${routerLink ? 4 : 3}" stroke-linecap="round"/>`;
+      if (net) {
+        svg += `<rect x="${mid - 46}" y="${Y - 14}" width="92" height="24" rx="12" style="fill:var(--panel);stroke:var(--line)"/>`;
+        svg += `<text class="mono" x="${mid}" y="${Y + 3}" text-anchor="middle" font-size="12" font-weight="700">${esc(net)}</text>`;
+      }
+      // end labels: interface name above the line, IP below it, next to each device
+      [[l.from, l.to, xa + 10, "start"], [l.to, l.from, xb - 10, "end"]].forEach(([me, peer, x, anchor]) => {
+        const ifn = ifaceOf(me, peer), ip = net ? ipFor(me, net) : null;
+        if (ifn) svg += `<text class="mono" x="${x}" y="${Y - 24}" text-anchor="${anchor}" font-size="11.5" font-weight="700" style="fill:var(--accent)">${esc(short(ifn))}</text>`;
+        if (ip) svg += `<text class="mono" x="${x}" y="${Y + 30}" text-anchor="${anchor}" font-size="11.5" style="fill:var(--muted)">${esc(ip)}</text>`;
+        // passive marker on router LAN-facing ends (router to non-router)
+        if (isR(me) && !isR(peer)) svg += `<text x="${x}" y="${Y + 46}" text-anchor="${anchor}" font-size="10.5" font-weight="700" style="fill:var(--warn)">passive</text>`;
+      });
+    });
+
+    // nodes
+    order.forEach(n => {
+      const p = pos[n];
+      if (isR(n)) {
+        svg += `<circle cx="${p.x}" cy="${p.y}" r="${R}" style="fill:var(--panel);stroke:var(--accent)" stroke-width="3.5"/>`;
+        svg += `<g stroke="var(--accent)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M${p.x - 18} ${p.y - 6}h30m-7 -7l7 7l-7 7"/><path d="M${p.x + 18} ${p.y + 8}h-30m7 -7l-7 7l7 7"/></g>`;
+      } else {
+        svg += `<rect x="${p.x - 30}" y="${p.y - 24}" width="60" height="38" rx="6" style="fill:var(--panel);stroke:var(--muted)" stroke-width="3"/>`;
+        svg += `<rect x="${p.x - 24}" y="${p.y - 18}" width="48" height="26" rx="3" style="fill:var(--panel2)"/>`;
+        svg += `<path d="M${p.x - 14} ${p.y + 22}h28M${p.x} ${p.y + 14}v8" style="stroke:var(--muted)" stroke-width="3" stroke-linecap="round"/>`;
+      }
+      svg += `<text x="${p.x}" y="${p.y + 70}" text-anchor="middle" font-weight="800" font-size="17">${esc(n)}</text>`;
+      svg += `<text x="${p.x}" y="${p.y + 88}" text-anchor="middle" font-size="11.5" style="fill:var(--muted)">${isR(n) ? "router" + (((DEVICES.routers || {})[n] || {}).router_id ? " · ID " + esc(DEVICES.routers[n].router_id) : "") : esc(type(n) || "host")}</text>`;
+    });
+    return svg + "</svg>";
+  }
+
+  function overviewHtml(j) {
+    const plan = j.plan || {};
+    let h = "";
+    if (j.errors && j.errors.length) h += `<div class="alert bad"><b>${j.errors.length} validation error${j.errors.length > 1 ? "s" : ""}</b><ul>${j.errors.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`;
+    if (j.warnings && j.warnings.length) h += `<div class="alert warn"><b>Warnings flagged for review</b><ul>${j.warnings.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`;
+    if ((!j.errors || !j.errors.length) && (!j.warnings || !j.warnings.length)) h += `<div class="alert ok"><b>Validation passed</b>No errors or warnings.</div>`;
+    h += `<div class="card"><div class="card-head"><h3>Topology</h3></div><div class="card-body">${topologySvg(plan)}</div></div>`;
+    h += `<div class="grid2">`;
+    h += `<div class="card"><div class="card-head"><h3>Addressing plan</h3></div><div class="card-body"><table class="tbl"><thead><tr><th>Device</th><th>IP</th><th>Network</th></tr></thead><tbody>${
+      (plan.addresses || []).map(a => `<tr><td><b>${esc(a.device)}</b></td><td class="mono">${esc(a.ip)}</td><td class="mono">${esc(a.network)}</td></tr>`).join("") || "<tr><td colspan='3' class='empty'>none</td></tr>"
+    }</tbody></table></div></div>`;
+    h += `<div class="card"><div class="card-head"><h3>AI ambiguities</h3></div><div class="card-body">${
+      (plan.ambiguities || []).length ? `<ul style="margin:0;padding-left:18px">${plan.ambiguities.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "<div class='empty'>Nothing flagged.</div>"
+    }</div></div></div>`;
+    return h;
+  }
+
+  function codeBlock(text) {
+    return `<div class="code-wrap"><button class="copy" data-copy>Copy</button><pre class="code">${esc(text)}</pre></div>`;
+  }
+  function configsHtml(j) {
+    const names = Object.keys(j.configs || {});
+    if (!names.length) return `<div class="alert warn"><b>No configurations</b>Fix the validation errors first.</div>`;
+    if (!cfgDev || !names.includes(cfgDev)) cfgDev = names[0];
+    return `<div class="subtabs">${names.map(n => `<button class="chip ${n === cfgDev ? "on" : ""}" data-cfg="${esc(n)}">${esc(n)}</button>`).join("")}</div>${codeBlock(j.configs[cfgDev])}`;
+  }
+
+  function deployHtml(j) {
+    if (!j.deployments) return `<div class="empty-state"><h2>Not deployed yet</h2><div>Approve the job, then press <b>Deploy</b> to publish it to Kafka.</div></div>`;
+    let h = "";
+    if (j.verification) {
+      const v = j.verification;
+      h += `<div class="alert ${v.status === "PASSED" ? "ok" : v.status === "FAILED" ? "bad" : v.status === "SKIPPED" ? "warn" : ""}" style="${["PENDING", "RUNNING"].includes(v.status) ? "background:var(--run-soft);color:var(--run)" : ""}"><b>OSPF verification: ${esc(v.status)}</b>${esc(v.summary || (v.status === "RUNNING" ? "Running show ip ospf neighbor, show ip route ospf, show ip protocols..." : ""))}</div>`;
+    }
+    h += `<div class="grid2">` + Object.keys(j.deployments).map(name => {
+      const d = j.deployments[name], v = d.verification;
+      let c = `<div class="router-card"><div class="router-head"><h4>${esc(name)}</h4>${badge(d.status)}</div>`;
+      c += `<dl class="kv"><dt>Queued</dt><dd>${esc(fmtTime(d.queued_at))}</dd><dt>Started</dt><dd>${esc(fmtTime(d.started_at))}</dd><dt>Finished</dt><dd>${esc(fmtTime(d.finished_at))}</dd>`;
+      if (d.kafka) c += `<dt>Kafka</dt><dd class="mono">partition ${esc(d.kafka.partition)} · offset ${esc(d.kafka.offset)}</dd>`;
+      c += `</dl>`;
+      if (v) {
+        c += `<div style="margin-top:12px">${badge(v.status, "OSPF " + v.status)} <span style="color:var(--muted);font-size:12px">${esc(v.summary || "")}</span></div>`;
+        if (v.checks && v.checks.length) c += `<ul class="checks">${v.checks.map(k => `<li><span class="ico ${k.ok ? "y" : "n"}">${k.ok ? "✓" : "✕"}</span><span><b>${esc(k.name)}</b><br><span style="color:var(--muted)">${esc(k.detail)}</span></span></li>`).join("")}</ul>`;
+        if (v.outputs && Object.keys(v.outputs).length) c += `<details><summary>Raw router output</summary>${codeBlock(Object.entries(v.outputs).map(([k, t]) => "# " + k + "\n" + t).join("\n\n"))}</details>`;
+      }
+      if (d.output) c += `<details><summary>Deployment output</summary>${codeBlock(d.output)}</details>`;
+      return c + `</div>`;
+    }).join("") + `</div>`;
+    return h;
+  }
+
+  function render() {
+    updateButtons();
+    $("emptyCard").style.display = job ? "none" : "";
+    $("jobView").style.display = job ? "" : "none";
+    if (!job) { setLive("Idle"); return; }
+    const running = ["QUEUED", "RUNNING"].includes(job.status) || (job.verification && ["PENDING", "RUNNING"].includes(job.verification.status));
+    setLive(running ? "Deploying…" : job.status, running ? "run" : job.status === "SUCCESS" ? "ok" : (job.status === "FAILED" || job.status === "INVALID") ? "bad" : "");
+    const tabs = [["overview", "Overview"], ["configs", "Configurations"], ["deploy", "Deployment"], ["plan", "AI plan (JSON)"]];
+    const body = tab === "overview" ? overviewHtml(job) : tab === "configs" ? configsHtml(job) : tab === "deploy" ? deployHtml(job) : codeBlock(JSON.stringify(job.plan, null, 2));
+    $("jobView").innerHTML = `
+      <div class="card hero">
+        <div class="grow"><h2>Job <span class="mono">${esc(job.job_id.slice(0, 8))}</span> ${badge(shownStatus(job))}</h2>
+          <p>Created ${esc(fmtTime(job.created_at))}${job.approved_at ? " · approved " + esc(fmtTime(job.approved_at)) : ""}</p></div>
+        ${progressHtml(job)}
+      </div>
+      <div class="tabbar"><div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("")}</div></div>
+      <div class="stack">${body}</div>`;
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-tab],[data-cfg],[data-copy],[data-job]");
+    if (!t) return;
+    if (t.dataset.tab) { tab = t.dataset.tab; render(); }
+    else if (t.dataset.cfg) { cfgDev = t.dataset.cfg; render(); }
+    else if (t.dataset.copy) {
+      const text = t.parentElement.querySelector("pre").textContent;
+      navigator.clipboard.writeText(text).then(() => { t.textContent = "Copied"; setTimeout(() => t.textContent = "Copy", 1200); }, () => toast("Copy failed", true));
+    } else if (t.dataset.job) openJob(t.dataset.job);
+  });
+
+  async function loadJobs() {
+    try {
+      const jobs = await api("/jobs");
+      jobs.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+      $("jobsList").innerHTML = jobs.length ? jobs.slice(0, 30).map(j => `
+        <button class="job-row ${job && job.job_id === j.job_id ? "sel" : ""}" data-job="${esc(j.job_id)}">
+          <span><span class="id mono">${esc(j.job_id.slice(0, 8))}</span><br><span class="when">${esc(fmtTime(j.created_at))}</span></span>${badge(shownStatus(j))}
+        </button>`).join("") : `<div class="empty">No jobs yet.</div>`;
+    } catch { $("jobsList").innerHTML = `<div class="empty">Could not load jobs.</div>`; }
+  }
+  $("refreshJobs").onclick = loadJobs;
+
+  async function openJob(id) {
+    try { job = await api("/jobs/" + id); tab = "overview"; render(); loadJobs(); resumePolling(); }
+    catch (err) { toast(err.message, true); }
+  }
+
+  async function guarded(fn) {
+    busy = true; updateButtons();
+    try { await fn(); } catch (err) { toast(err.message || String(err), true); }
+    finally { busy = false; render(); loadJobs(); }
+  }
+
+  $("generateBtn").onclick = () => guarded(async () => {
+    const file = fileInput.files[0];
+    if (!file) throw new Error("Choose a diagram image first.");
+    stopPolling(); job = null;
+    $("generateBtn").innerHTML = `<span class="num"><span class="spinner"></span></span><span class="t"><b>Generating…</b><span>Uploading and analysing with AI</span></span>`;
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const up = await api("/upload", { method: "POST", body: fd });
+      job = await api("/generate/" + up.upload_id, { method: "POST" });
+      tab = "overview";
+      toast(job.errors.length ? "Job is INVALID. See the errors." : "Configs generated. Review, then approve.", job.errors.length > 0);
+    } finally {
+      $("generateBtn").innerHTML = `<span class="num">1</span><span class="t"><b>Generate</b><span>AI reads the diagram, builds configs</span></span>`;
+    }
+  });
+
+  $("reviewBtn").onclick = () => guarded(async () => {
+    job = await api("/jobs/" + job.job_id); tab = "configs"; toast("Job refreshed.");
+  });
+
+  $("approveBtn").onclick = async () => {
+    if (!job) return;
+    const ok = await confirmBox("Approve deployment?", "You confirm the proposed configurations were reviewed. Nothing is deployed until you press Deploy.", "Approve");
+    if (!ok) return;
+    guarded(async () => { job = await api("/jobs/" + job.job_id + "/approve", { method: "POST" }); toast("Job approved."); });
+  };
+
+  $("deployBtn").onclick = async () => {
+    if (!job) return;
+    const ok = await confirmBox("Send to Kafka?", "The approved job is published to topic network-config-jobs. The worker then configures the routers over SSH.", "Deploy");
+    if (!ok) return;
+    guarded(async () => {
+      job = await api("/jobs/" + job.job_id + "/deploy", { method: "POST" });
+      tab = "deploy"; toast("Job sent to Kafka."); resumePolling();
+    });
+  };
+
+  // ---------- polling ----------
+  function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  function isFinished(j) {
+    const v = j.verification && j.verification.status;
+    return (j.status === "SUCCESS" || j.status === "FAILED") && v && !["PENDING", "RUNNING"].includes(v);
+  }
+  function resumePolling() {
+    stopPolling();
+    if (!job || !job.deployments || isFinished(job)) return;
+    let n = 0;
+    pollTimer = setInterval(async () => {
+      if (++n > 300) return stopPolling();
+      try {
+        job = await api("/jobs/" + job.job_id); render(); loadJobs();
+        if (isFinished(job)) { stopPolling(); toast("Job " + job.status + " · OSPF " + ((job.verification || {}).status || "n/a"), job.status !== "SUCCESS"); }
+      } catch { /* try again next tick */ }
+    }, 3000);
+  }
+
+  render();
+  loadJobs();
+  api("/devices").then(d => { DEVICES = d || {}; if (job) render(); }).catch(() => { /* labels are optional */ });
+})();
+</script>
+</body>
+</html>
