@@ -4,7 +4,7 @@ Upload a network diagram, and this system turns it into a **verified OSPF deploy
 
 > Built for a university network-automation lab exam. The AI never touches a router: nothing is deployed without explicit human approval.
 
-![Job finished: OSPF verification passed on both routers](docs/screenshots/08-job-success-ospf-passed.png)
+![NetAuto Console: upload a diagram, then Generate, Review, Approve and Deploy](docs/screenshots/00-netauto-console.webp)
 
 ## Highlights
 
